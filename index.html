@@ -152,6 +152,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setCountryFromIP();
 
+    function handleHashChange() {
+        const hash = window.location.hash.replace('#', '');
+        if (!hash) return;
+        // Regular expression to keep '+' at the beginning and digits only
+        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1');
+
+        if (hash.startsWith('##')) { // Directly open WhatsApp if double-hash
+            iti.setNumber(numericHash);
+            if (iti.isValidNumber()) {
+                window.location.href = `https://wa.me/${iti.getNumber(intlTelInputUtils.numberFormat.E164).replace(/\D/g, '')}`;
+            } else {
+                console.error('Invalid number for direct WhatsApp open:', numericHash);
+            }
+        } else { // Prepopulate the field if single-hash
+            iti.setNumber(numericHash);
+            updateLinkAndValidation();
+        }
+    }
+
+    handleHashChange(); // Call on initial load
+    window.onhashchange = handleHashChange; // Also react to hash changes
+	
     function updateLinkAndValidation() {
         const fullNumber = iti.getNumber(intlTelInputUtils.numberFormat.E164);
         const cleanNumber = fullNumber.replace(/\D/g, '');
