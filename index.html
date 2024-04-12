@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const hash = window.location.hash.replace('#', '');
         if (!hash) return;
         // Regular expression to keep '+' at the beginning and digits only
-        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1');
+        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');;
 
         if (hash.startsWith('##')) { // Directly open WhatsApp if double-hash
             iti.setNumber(numericHash);
@@ -175,6 +175,10 @@ document.addEventListener('DOMContentLoaded', function () {
     window.onhashchange = handleHashChange; // Also react to hash changes
 	
     function updateLinkAndValidation() {
+	    if (typeof intlTelInputUtils === 'undefined') {
+			setTimeout(updateLinkAndValidation, 100);
+			return;
+		}
         const fullNumber = iti.getNumber(intlTelInputUtils.numberFormat.E164);
         const cleanNumber = fullNumber.replace(/\D/g, '');
 
@@ -205,14 +209,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     pasteButton.onclick = function() {
         navigator.clipboard.readText().then(text => {
-            iti.setNumber(text.trim());
+            iti.setNumber(text.trim().replace(/^00/, '+'));
             updateLinkAndValidation();
         }).catch(err => {
             console.error('Failed to read clipboard contents: ', err);
         });
     };
 
-    input.addEventListener('input', updateLinkAndValidation);
+	input.addEventListener('input', function() {
+		let currentValue = input.value;
+		// Normalize input: replace '00' at the start with '+'
+		if (currentValue.startsWith('00')) {
+			currentValue = '+' + currentValue.substring(2);
+			input.value = currentValue;
+		}
+		updateLinkAndValidation();
+	});
+	
     input.addEventListener('countrychange', function() {
         if (input.value.trim() !== '') updateLinkAndValidation();
     });
@@ -225,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     input.addEventListener('blur', function() {
         let formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
-        iti.setNumber(formattedNumber);
+        iti.setNumber(formattedNumber.replace(/^00/, '+'));
     });
 });
     </script>
