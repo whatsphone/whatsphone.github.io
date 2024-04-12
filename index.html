@@ -165,11 +165,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 	
     function handleHashChange() {
-        const hash = window.location.hash.replace('#', '');
+        const hash = window.location.hash;
         if (!hash) return;
         // Regular expression to keep '+' at the beginning and digits only
-        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');;
-
+        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
+        if (!numericHash) return;
+		
         if (hash.startsWith('##')) { // Directly open WhatsApp if double-hash
             iti.setNumber(numericHash);
             if (iti.isValidNumber()) {
