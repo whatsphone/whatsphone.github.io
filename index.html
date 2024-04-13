@@ -164,11 +164,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error('Error initializing country:', error);
     }
 	
+	function cleanNumber(number) {
+		return number.trim().replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
+	}
+	
     function handleHashChange() {
         const hash = window.location.hash;
         if (!hash) return;
         // Regular expression to keep '+' at the beginning and digits only
-        const numericHash = hash.replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
+        const numericHash = cleanNumber(hash);
         if (!numericHash) return;
 		
         if (hash.startsWith('##')) { // Directly open WhatsApp if double-hash
@@ -193,10 +197,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 			return;
 		}
         const fullNumber = iti.getNumber(intlTelInputUtils.numberFormat.E164);
-        const cleanNumber = fullNumber.replace(/\D/g, '');
+        const waNumber = fullNumber.replace(/\D/g, '');
 
         if (input.value.trim() !== '' && iti.isValidNumber()) {
-            whatsappLink.href = `https://wa.me/${cleanNumber}`;
+            whatsappLink.href = `https://wa.me/${waNumber}`;
             whatsappLink.style.display = 'block';
             input.classList.remove('is-invalid');
             input.classList.add('is-valid');
@@ -222,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     pasteButton.onclick = function() {
         navigator.clipboard.readText().then(text => {
-            iti.setNumber(text.trim().replace(/^00/, '+'));
+            iti.setNumber(cleanNumber(text));
             updateLinkAndValidation();
         }).catch(err => {
             console.error('Failed to read clipboard contents: ', err);
@@ -230,12 +234,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     };
 
 	input.addEventListener('input', function() {
-		let currentValue = input.value;
-		// Normalize input: replace '00' at the start with '+'
-		if (currentValue.startsWith('00')) {
-			currentValue = '+' + currentValue.substring(2);
-			input.value = currentValue;
-		}
+		input.value = cleanNumber(input.value);
 		updateLinkAndValidation();
 	});
 	
@@ -251,7 +250,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     input.addEventListener('blur', function() {
         let formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
-        iti.setNumber(formattedNumber.replace(/^00/, '+'));
+        iti.setNumber(cleanNumber(formattedNumber));
     });
 });
     </script>
