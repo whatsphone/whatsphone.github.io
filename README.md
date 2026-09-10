@@ -80,6 +80,13 @@ Then open <http://localhost:8000>.
 
 Issues and pull requests are welcome. Since there's no build step, the whole app is [`index.html`](index.html) — edit it, open it in a browser, done.
 
+If you change an image, icon or the manifest, re-stamp the asset URLs so nobody gets a stale copy from cache:
+
+```bash
+node tools/cache-bust.mjs          # rewrite the ?v= hashes in place
+node tools/cache-bust.mjs --check  # verify they're current (exits 1 if not)
+```
+
 ## 📄 License
 
 [MIT](LICENSE) © whatsphone

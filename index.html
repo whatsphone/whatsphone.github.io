@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Open Phone Number In WhatsApp - Enter a valid phone number to get a direct WhatsApp link.">
     <title>Open Phone Number In WhatsApp</title>
-	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-	<link rel="manifest" href="/site.webmanifest">
-	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=c9de5a53">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=d51b8c51">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=cd93aa5c">
+	<link rel="manifest" href="/site.webmanifest?v=430cc18a">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg?v=10dcadb6" color="#5bbad5">
 	<meta name="msapplication-TileColor" content="#da532c">
-	<meta name="theme-color" content="#ffffff">
+	<meta name="theme-color" content="#f8f9fa">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/dist/css/intlTelInput.min.css"
@@ -25,20 +25,69 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css"
           integrity="sha384-6PPM9FQ/C8Yhl7I7MGkHjRp8AtDT2AYsSAySNhhWfpqLZ4rIzqjOhZulS91Vt+84" crossorigin="anonymous">
     <style>
+        :root {
+            --page-bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --footer-bg: #e9ecef;
+            --line: #dee2e6;
+            --brand: #1a8a34;
+            --brand-dark: #15702a;
+            --ink: #212529;
+            --muted: #6c757d;
+            --footer-height: 3.25rem;
+        }
+        body {
+            background-color: var(--page-bg);
+            color: var(--ink);
+            /* Keep content clear of the fixed footer. */
+            padding-bottom: calc(var(--footer-height) + 1rem);
+        }
+        /* Sit the app a quarter of the way down: the leftover vertical space is
+           split 1:3 above and below, so it reads as high on the page at any
+           height. (A flat 25vh top padding measures 25% but still looks centred,
+           because the content block itself is ~340px tall.) Bootstrap's .py-5
+           sets padding with !important, so that class is off the element and the
+           vertical padding is set here instead. */
+        main.container {
+            min-height: calc(100vh - var(--footer-height) - 1rem);
+            display: flex;
+            flex-direction: column;
+            padding-top: 1.5rem;
+            padding-bottom: 3rem;
+        }
+        main.container::before {
+            content: "";
+            flex: 1;
+        }
+        main.container::after {
+            content: "";
+            flex: 3;
+        }
         .input-group {
             width: 100%;
+            /* Bootstrap wraps input groups by default, which drops the Paste
+               button onto its own line on narrow screens. Keep it on one line and
+               let the number field absorb the difference instead. */
+            flex-wrap: nowrap;
         }
         .input-group .iti {
             display: flex;
             flex-grow: 1;
+            min-width: 0; /* Allow the field to shrink below its intrinsic width. */
         }
         .input-group .iti > .form-control {
             width: 100%;
+            min-width: 0;
         }
         .input-group .btn {
             z-index: 3;
             border-top-left-radius: 0;
             border-bottom-left-radius: 0;
+            /* With flex-wrap: nowrap above, the button would otherwise be squeezed
+               until its label broke onto a second line and made the row taller.
+               Keep it at its natural width; the number field absorbs the shrink. */
+            flex-shrink: 0;
+            white-space: nowrap;
         }
         .input-group .form-control {
             border-top-right-radius: 0;
@@ -48,41 +97,133 @@
             border-radius: 0.375rem;
             padding: 1rem 1.25rem;
             display: block; /* Initially show the alert */
+            margin-bottom: 1rem;
+        }
+        /* The resting state is guidance, not an alert, so keep it quiet. Errors
+           (danger) and clipboard failures (warning) keep their Bootstrap colours. */
+        #info-text.alert-primary {
+            background-color: #f1f3f5;
+            border-color: var(--line);
+            color: var(--muted);
+            padding: 0.75rem 1.25rem;
+        }
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        /* The logo sits in its own tile so it reads as a mark rather than an
+           image dropped next to the text. */
+        .app-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 5.25rem;
+            height: 5.25rem;
+            margin-bottom: 1.125rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--line);
+            border-radius: 1.5rem;
+            box-shadow: 0 6px 18px rgba(26, 138, 52, 0.13);
+        }
+        .app-logo img {
+            display: block;
+            width: auto;
+            height: 3.25rem;
         }
 		h1 {
 			font-family: 'Roboto', sans-serif;
-			color: #1a8a34; /* #6AB246 - Color that matches the button */
-            display: flex;
-            align-items: center;
+            font-weight: 700;
+			color: var(--brand);
+            font-size: clamp(1.6rem, 5.2vw, 2.5rem);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin: 0;
         }
-        h1 img {
-            margin-right: 10px;
-            height: 60px;
+        .tagline {
+            color: var(--muted);
+            font-size: clamp(0.95rem, 2.6vw, 1.125rem);
+            margin: 0.65rem auto 0;
+            max-width: 34rem;
         }
-        /* v29 renders the country selector flat. Restore the shaded block (flag,
-           arrow and dial code) that set it apart from the number field. */
+        /* Tie the call to action to the title colour rather than Bootstrap green. */
+        #whatsapp-link {
+            background-color: var(--brand);
+            border-color: var(--brand);
+            font-weight: 600;
+            padding-top: 0.7rem;
+            padding-bottom: 0.7rem;
+        }
+        #whatsapp-link:hover,
+        #whatsapp-link:focus-visible {
+            background-color: var(--brand-dark);
+            border-color: var(--brand-dark);
+        }
+        /* Restore the v17 country selector. v29 renders it flat, reorders it to
+           flag > arrow > dial code, and draws the arrow as a thin rotated chevron.
+           This puts back the shaded block, the flag > dial code > arrow order and
+           the solid triangle, matching the old layout to the pixel. */
         .iti__selected-country {
             background-color: rgba(0, 0, 0, 0.05);
             border-top-left-radius: 0.375rem;
             border-bottom-left-radius: 0.375rem;
+            padding: 0 6px 0 8px;
         }
-        .iti__selected-dial-code {
-            padding-right: 8px;
+        .iti__selected-country-primary {
+            display: contents; /* Let the flag and arrow order independently. */
+        }
+        .iti__selected-country .iti__flag {
+            order: 1;
+        }
+        .iti__selected-country .iti__selected-dial-code {
+            order: 2;
+            margin-left: 6px;
+        }
+        .iti__selected-country .iti__arrow {
+            order: 3;
+            margin-left: 6px;
+            margin-top: 0;
+            width: 0;
+            height: 0;
+            border: 0;
+            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
+            border-top: 4px solid #555;
+            transform: none;
+        }
+        .iti__selected-country .iti__arrow--up {
+            border-top: 0;
+            border-bottom: 4px solid #555;
         }
 		footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* Below intl-tel-input's dropdown (z-index 1060) so the country list
+               is never covered by the band. */
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: var(--footer-height);
+            padding: 0.6rem 1rem;
+            /* Sits on the page background, one step darker. */
+            background-color: var(--footer-bg);
+            border-top: 1px solid var(--line);
             text-align: center;
-            padding: 20px 0;
-            margin-top: 20px;
-            font-size: 16px;
-            background-color: #f8f9fa;
-            border-top: 1px solid #e9ecef;
+            font-size: 0.95rem;
         }
         footer a {
             text-decoration: none;
-            color: #333;
+            color: #495057;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            transition: color 0.15s ease, background-color 0.15s ease;
         }
-        footer a:hover {
-            color: #007bff;
+        footer a:hover,
+        footer a:focus-visible {
+            color: var(--ink);
+            background-color: rgba(0, 0, 0, 0.06);
         }
         footer .bi {
             vertical-align: -0.125em;
@@ -91,13 +232,16 @@
     </style>
 </head>
 <body>
-    <div class="container py-5">
+    <main class="container">
 		<div class="row justify-content-center">
-			<div class="col-lg-10 text-center mb-4">
-				<h1>
-					<img src="/whatsapp.svg" alt="WhatsApp Logo" style="vertical-align: middle;">
-					Open Phone Number In WhatsApp
-				</h1>
+			<div class="col-lg-10">
+				<header class="app-header">
+					<span class="app-logo">
+						<img src="/whatsapp.svg?v=dd6a4db2" alt="WhatsApp Logo">
+					</span>
+					<h1>Open Phone Number In WhatsApp</h1>
+					<p class="tagline">Message any number without saving it to your contacts.</p>
+				</header>
 			</div>
 		</div>
         <div class="row justify-content-center">
@@ -117,7 +261,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <footer>
         <a href="https://github.com/whatsphone/whatsphone.github.io/tree/main" target="_blank" rel="noopener noreferrer">
