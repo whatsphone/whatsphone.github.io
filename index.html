@@ -12,21 +12,28 @@
 	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 	<meta name="msapplication-TileColor" content="#da532c">
 	<meta name="theme-color" content="#ffffff">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.18/css/intlTelInput.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.18/js/intlTelInput.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.10.7/libphonenumber-js.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/dist/css/intlTelInput.min.css"
+          integrity="sha384-ruvLdWaS29qgQGLHa/gi6V/P9MwCbrkXvxho56yVUG0jK7dbAw14X15Bs4ck4mji" crossorigin="anonymous">
+    <!-- intlTelInputWithUtils bundles the formatting/validation utils, so they are
+         available synchronously rather than as a second, racy async download. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/dist/js/intlTelInputWithUtils.min.js"
+            integrity="sha384-93hWm2TFsMO02u5ah7ei/BLy5FX/nVzF2TDVfDDlXrb2VWecCH1tjRMgUe5nJlne" crossorigin="anonymous"></script>
+	<!-- Google Fonts serves different CSS per user agent, so it cannot carry an integrity hash. -->
 	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css"
+          integrity="sha384-6PPM9FQ/C8Yhl7I7MGkHjRp8AtDT2AYsSAySNhhWfpqLZ4rIzqjOhZulS91Vt+84" crossorigin="anonymous">
     <style>
         .input-group {
             width: 100%;
         }
         .input-group .iti {
             display: flex;
-        }
-        .input-group .iti--allow-dropdown {
             flex-grow: 1;
+        }
+        .input-group .iti > .form-control {
+            width: 100%;
         }
         .input-group .btn {
             z-index: 3;
@@ -52,9 +59,16 @@
             margin-right: 10px;
             height: 60px;
         }
-		#phone-number {
-			margin-right: -95px; /* Fix layout issue due to a padding-left being dynamically added to this element based on the country selector */
-		}
+        /* v29 renders the country selector flat. Restore the shaded block (flag,
+           arrow and dial code) that set it apart from the number field. */
+        .iti__selected-country {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-top-left-radius: 0.375rem;
+            border-bottom-left-radius: 0.375rem;
+        }
+        .iti__selected-dial-code {
+            padding-right: 8px;
+        }
 		footer {
             text-align: center;
             padding: 20px 0;
@@ -81,7 +95,7 @@
 		<div class="row justify-content-center">
 			<div class="col-lg-10 text-center mb-4">
 				<h1>
-					<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp Logo" style="vertical-align: middle;">
+					<img src="/whatsapp.svg" alt="WhatsApp Logo" style="vertical-align: middle;">
 					Open Phone Number In WhatsApp
 				</h1>
 			</div>
@@ -89,21 +103,24 @@
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="input-group mb-3">
-                    <input type="tel" class="form-control" id="phone-number" placeholder="Enter phone number">
+                    <!-- Set explicitly: left alone, intl-tel-input v29 would apply
+                         autocomplete="tel", which makes the browser offer its own
+                         autofill dropdown over the field. v17 applied "off". -->
+                    <input type="tel" class="form-control" id="phone-number" placeholder="Enter phone number" autocomplete="off">
                     <button class="btn btn-outline-secondary" id="paste-button" type="button">
                         <i class="bi bi-clipboard"></i> Paste
                     </button>
                 </div>
                 <div id="info-text" class="alert alert-primary alert-custom">Please enter a phone number.</div>
                 <div class="d-grid gap-2">
-                    <a id="whatsapp-link" class="btn btn-success btn-lg" style="display: none;" target="_blank">Open in WhatsApp</a>
+                    <a id="whatsapp-link" class="btn btn-success btn-lg" style="display: none;" target="_blank" rel="noopener noreferrer">Open in WhatsApp</a>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <footer>
-        <a href="https://github.com/whatsphone/whatsphone.github.io/tree/main" target="_blank">
+        <a href="https://github.com/whatsphone/whatsphone.github.io/tree/main" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-github" role="img" aria-label="GitHub"></i> View on GitHub
         </a>
     </footer>
@@ -114,16 +131,32 @@ document.addEventListener('DOMContentLoaded', async function () {
     const whatsappLink = document.querySelector("#whatsapp-link");
     const pasteButton = document.querySelector("#paste-button");
 
+    function showMessage(kind, text) {
+        infoText.className = `alert alert-${kind} alert-custom`;
+        infoText.textContent = text;
+        infoText.style.display = 'block';
+    }
+
+    // Subresource integrity makes the CDN fail closed, so say something useful
+    // rather than leaving an inert page behind.
+    if (typeof intlTelInput === 'undefined') {
+        showMessage('danger', 'Could not load the phone number library. Please refresh the page.');
+        return;
+    }
+
+    // Formatting and validation ship inside intlTelInputWithUtils, so they are
+    // available synchronously and nothing has to wait on a second download.
     const iti = intlTelInput(input, {
-        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.18/js/utils.js",
-        separateDialCode: true,
-        nationalMode: true,
         initialCountry: 'us',
-        autoPlaceholder: "polite",
-        customContainer: "intl-tel-input-custom",
-        dropdownContainer: document.body,
-        formatOnDisplay: true,
-        preferredCountries: ['us', 'gb']
+        countryOrder: ['us', 'gb'],
+        dropdownParent: document.body,
+        separateDialCode: true,
+        // v29 adds a search field to the dropdown, which browsers offer to autofill.
+        // The original design had no search box.
+        countrySearch: false,
+        // Accept any valid number type, matching the previous behaviour rather
+        // than the v29 default of mobile and fixed line only.
+        allowedNumberTypes: null
     });
 
     const COUNTRY_COOKIE = 'ipCountryData';
@@ -134,15 +167,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (parts.length === 2) return parts.pop().split(';').shift();
     }
 
-    // Only accept codes intl-tel-input actually knows, otherwise setCountry()
-    // leaves the selector in a blank state.
+    // setSelectedCountry() throws on an unrecognised code, so check first.
     function isKnownCountry(iso2) {
         if (!/^[a-z]{2}$/.test(iso2 || '')) return false;
-        try {
-            return window.intlTelInputGlobals.getCountryData().some(c => c.iso2 === iso2);
-        } catch (err) {
-            return true; // No country list available: let setCountry() decide.
-        }
+        return intlTelInput.getAllCountries().some(c => c.iso2 === iso2);
     }
 
     // Each provider yields an ISO 3166-1 alpha-2 code. They are tried in order, so a
@@ -198,126 +226,110 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function setCountryFromIP() {
         const cached = readCachedCountry();
         if (cached) {
-            iti.setCountry(cached);
+            iti.setSelectedCountry(cached);
             return;
         }
         const code = await fetchCountryFromIP();
         if (!code) return; // Keep the initialCountry fallback.
         // Don't yank the selector away from someone who started typing while the
         // lookup was still in flight.
-        if (input.value.trim() === '') iti.setCountry(code);
+        if (input.value.trim() === '') iti.setSelectedCountry(code);
         document.cookie = `${COUNTRY_COOKIE}=${encodeURIComponent(code)}; max-age=86400; path=/; SameSite=Lax`;
     }
 
     await setCountryFromIP();
 
-	function cleanNumber(number) {
-		return number.trim().replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
-	}
-	
-    // intl-tel-input loads utils.js asynchronously. Until it lands, isValidNumber()
-    // returns null and intlTelInputUtils is undefined, so anything that formats or
-    // validates a number has to wait for it.
-    function whenUtilsReady(callback) {
-        const deadline = Date.now() + 10000;
-        (function poll() {
-            if (typeof intlTelInputUtils !== 'undefined') return callback();
-            if (Date.now() > deadline) {
-                console.error('intl-tel-input utils.js did not load; validation unavailable.');
-                return;
-            }
-            setTimeout(poll, 50);
-        })();
+    function cleanNumber(number) {
+        return number.trim().replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
+    }
+
+    function waLink() {
+        return `https://wa.me/${iti.getNumber(intlTelInput.NUMBER_FORMAT.E164).replace(/\D/g, '')}`;
+    }
+
+    function updateLinkAndValidation() {
+        if (input.value.trim() !== '' && iti.isValidNumber()) {
+            whatsappLink.href = waLink();
+            whatsappLink.style.display = 'block';
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            infoText.textContent = '';
+            infoText.style.display = 'none';
+        } else if (input.value.trim() === '') {
+            input.classList.remove('is-invalid', 'is-valid');
+            whatsappLink.style.display = 'none';
+            showMessage('primary', 'Please enter a phone number.');
+        } else {
+            whatsappLink.style.display = 'none';
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showMessage('danger', 'Please enter a valid phone number.');
+        }
     }
 
     function handleHashChange() {
         const hash = window.location.hash;
         if (!hash) return;
+        // The browser percent-encodes separators in the fragment, so a number like
+        // "#+33 6 12 34 56 78" arrives as "#+33%206%2012...". Decoding first stops
+        // the digits of those escapes leaking into the number.
+        let decodedHash = hash;
+        try {
+            decodedHash = decodeURIComponent(hash);
+        } catch (err) { /* Malformed escape sequence: fall back to the raw hash. */ }
         // Regular expression to keep '+' at the beginning and digits only
-        const numericHash = cleanNumber(hash);
+        const numericHash = cleanNumber(decodedHash);
         if (!numericHash) return;
-		
+
         iti.setNumber(numericHash);
         if (!hash.startsWith('##')) { // Single hash: just prepopulate the field.
             updateLinkAndValidation();
             return;
         }
-        // Double hash: open WhatsApp directly, once validation is available.
-        whenUtilsReady(function () {
-            if (iti.isValidNumber()) {
-                window.location.href = `https://wa.me/${iti.getNumber(intlTelInputUtils.numberFormat.E164).replace(/\D/g, '')}`;
-            } else {
-                console.error('Invalid number for direct WhatsApp open:', numericHash);
-                updateLinkAndValidation(); // Surface the error in the UI, not just the console.
-            }
-        });
+        // Double hash: open WhatsApp directly.
+        if (iti.isValidNumber()) {
+            window.location.href = waLink();
+        } else {
+            console.error('Invalid number for direct WhatsApp open:', numericHash);
+            updateLinkAndValidation(); // Surface the error in the UI, not just the console.
+        }
     }
 
     handleHashChange(); // Call on initial load
     window.onhashchange = handleHashChange; // Also react to hash changes
-	
-    function updateLinkAndValidation() {
-        if (typeof intlTelInputUtils === 'undefined') {
-            whenUtilsReady(updateLinkAndValidation);
-            return;
-        }
-        const fullNumber = iti.getNumber(intlTelInputUtils.numberFormat.E164);
-        const waNumber = fullNumber.replace(/\D/g, '');
 
-        if (input.value.trim() !== '' && iti.isValidNumber()) {
-            whatsappLink.href = `https://wa.me/${waNumber}`;
-            whatsappLink.style.display = 'block';
-            input.classList.remove('is-invalid');
-            input.classList.add('is-valid');
-            infoText.className = 'alert alert-success alert-custom';
-            infoText.textContent = '';
-            infoText.style.display = 'none';
-        } else if (input.value.trim() === '') {
-            input.classList.remove('is-invalid');
-            input.classList.remove('is-valid');
-            whatsappLink.style.display = 'none';
-            infoText.className = 'alert alert-primary alert-custom';
-            infoText.textContent = 'Please enter a phone number.';
-            infoText.style.display = 'block';
-        } else {
-            whatsappLink.style.display = 'none';
-            input.classList.add('is-invalid');
-            input.classList.remove('is-valid');
-            infoText.className = 'alert alert-danger alert-custom';
-            infoText.textContent = 'Please enter a valid phone number.';
-            infoText.style.display = 'block';
-        }
-    }
-
-    pasteButton.onclick = function() {
-        navigator.clipboard.readText().then(text => {
+    pasteButton.onclick = async function () {
+        try {
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+                throw new Error('Clipboard API unavailable');
+            }
+            const text = await navigator.clipboard.readText();
             iti.setNumber(cleanNumber(text));
             updateLinkAndValidation();
-        }).catch(err => {
-            console.error('Failed to read clipboard contents: ', err);
-        });
+        } catch (err) {
+            // Firefox and Safari routinely refuse readText(), so tell the user
+            // instead of appearing to do nothing at all.
+            console.error('Failed to read clipboard contents:', err);
+            showMessage('warning', 'Could not read the clipboard. Please paste into the field manually.');
+            input.focus();
+        }
     };
 
-	input.addEventListener('input', function() {
-		input.value = cleanNumber(input.value);
-		updateLinkAndValidation();
-	});
-	
-    input.addEventListener('countrychange', function() {
+    // strictMode filters stray characters and formatAsYouType preserves the caret,
+    // so the value no longer needs rewriting on every keystroke.
+    input.addEventListener('input', updateLinkAndValidation);
+
+    input.addEventListener('countrychange', function () {
         if (input.value.trim() !== '') updateLinkAndValidation();
     });
 
-    const countrySelector = document.querySelector(".iti__selected-flag");
-    countrySelector.addEventListener('click', function() {
-        input.focus();
-        updateLinkAndValidation();
-    });
-
-    input.addEventListener('blur', function() {
-        if (typeof intlTelInputUtils === 'undefined') return;
-        const formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
-        iti.setNumber(cleanNumber(formattedNumber));
-    });
+    const countrySelector = document.querySelector('.iti__selected-country');
+    if (countrySelector) {
+        countrySelector.addEventListener('click', function () {
+            input.focus();
+            updateLinkAndValidation();
+        });
+    }
 });
     </script>
 </body>
