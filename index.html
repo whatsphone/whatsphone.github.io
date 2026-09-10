@@ -215,6 +215,21 @@ document.addEventListener('DOMContentLoaded', async function () {
 		return number.trim().replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
 	}
 	
+    // intl-tel-input loads utils.js asynchronously. Until it lands, isValidNumber()
+    // returns null and intlTelInputUtils is undefined, so anything that formats or
+    // validates a number has to wait for it.
+    function whenUtilsReady(callback) {
+        const deadline = Date.now() + 10000;
+        (function poll() {
+            if (typeof intlTelInputUtils !== 'undefined') return callback();
+            if (Date.now() > deadline) {
+                console.error('intl-tel-input utils.js did not load; validation unavailable.');
+                return;
+            }
+            setTimeout(poll, 50);
+        })();
+    }
+
     function handleHashChange() {
         const hash = window.location.hash;
         if (!hash) return;
@@ -222,27 +237,30 @@ document.addEventListener('DOMContentLoaded', async function () {
         const numericHash = cleanNumber(hash);
         if (!numericHash) return;
 		
-        if (hash.startsWith('##')) { // Directly open WhatsApp if double-hash
-            iti.setNumber(numericHash);
+        iti.setNumber(numericHash);
+        if (!hash.startsWith('##')) { // Single hash: just prepopulate the field.
+            updateLinkAndValidation();
+            return;
+        }
+        // Double hash: open WhatsApp directly, once validation is available.
+        whenUtilsReady(function () {
             if (iti.isValidNumber()) {
                 window.location.href = `https://wa.me/${iti.getNumber(intlTelInputUtils.numberFormat.E164).replace(/\D/g, '')}`;
             } else {
                 console.error('Invalid number for direct WhatsApp open:', numericHash);
+                updateLinkAndValidation(); // Surface the error in the UI, not just the console.
             }
-        } else { // Prepopulate the field if single-hash
-            iti.setNumber(numericHash);
-            updateLinkAndValidation();
-        }
+        });
     }
 
     handleHashChange(); // Call on initial load
     window.onhashchange = handleHashChange; // Also react to hash changes
 	
     function updateLinkAndValidation() {
-	    if (typeof intlTelInputUtils === 'undefined') {
-			setTimeout(updateLinkAndValidation, 100);
-			return;
-		}
+        if (typeof intlTelInputUtils === 'undefined') {
+            whenUtilsReady(updateLinkAndValidation);
+            return;
+        }
         const fullNumber = iti.getNumber(intlTelInputUtils.numberFormat.E164);
         const waNumber = fullNumber.replace(/\D/g, '');
 
@@ -296,7 +314,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     input.addEventListener('blur', function() {
-        let formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
+        if (typeof intlTelInputUtils === 'undefined') return;
+        const formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
         iti.setNumber(cleanNumber(formattedNumber));
     });
 });
