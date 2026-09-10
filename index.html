@@ -126,44 +126,91 @@ document.addEventListener('DOMContentLoaded', async function () {
         preferredCountries: ['us', 'gb']
     });
 
+    const COUNTRY_COOKIE = 'ipCountryData';
+
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
     }
 
-	async function setCountryFromIP() {
-		try {
-			const cookieData = getCookie('ipCountryData');
-			if (cookieData) {
-				const countryData = JSON.parse(cookieData);
-				iti.setCountry(countryData.isoCode.toLowerCase());
-			} else {
-				const response = await fetch('https://api.ipapi.is');
-				if (!response.ok) {
-					throw new Error('Failed to fetch country data.');
-				}
-				const res = await response.json();
-				if (res && res.location && res.location.country_code) {
-					iti.setCountry(res.location.country_code.toLowerCase());
-					const cookieValue = JSON.stringify({ isoCode: res.location.country_code });
-					document.cookie = `ipCountryData=${cookieValue}; max-age=86400`; // Set cookie for 24 hours
-				} else {
-					throw new Error('Country data is incomplete or unavailable.');
-				}
-			}
-		} catch (err) {
-			console.error('IPAPI call failed:', err);
-			// Optionally, handle the error more gracefully here
-		}
-	}
-	
-    try {
-        await setCountryFromIP(); // Await the async function to set country
-    } catch (error) {
-        console.error('Error initializing country:', error);
+    // Only accept codes intl-tel-input actually knows, otherwise setCountry()
+    // leaves the selector in a blank state.
+    function isKnownCountry(iso2) {
+        if (!/^[a-z]{2}$/.test(iso2 || '')) return false;
+        try {
+            return window.intlTelInputGlobals.getCountryData().some(c => c.iso2 === iso2);
+        } catch (err) {
+            return true; // No country list available: let setCountry() decide.
+        }
     }
-	
+
+    // Each provider yields an ISO 3166-1 alpha-2 code. They are tried in order, so a
+    // rate-limited or reshaped response falls through to the next one instead of
+    // silently leaving the user on initialCountry.
+    const GEO_PROVIDERS = [
+        { url: 'https://get.geojs.io/v1/ip/country.json', parse: r => r.country },
+        { url: 'https://ipwho.is/', parse: r => r.country_code },
+        // ipapi.is exposed location.country_code on its older payload and omits any
+        // code on the current free tier; accept either shape.
+        { url: 'https://api.ipapi.is', parse: r => (r.location && r.location.country_code) || r.country_code }
+    ];
+
+    async function fetchCountryFromIP() {
+        for (const provider of GEO_PROVIDERS) {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 4000);
+                let response;
+                try {
+                    response = await fetch(provider.url, { signal: controller.signal });
+                } finally {
+                    clearTimeout(timeout);
+                }
+                if (!response.ok) continue;
+                const code = (provider.parse(await response.json()) || '').toLowerCase();
+                if (isKnownCountry(code)) return code;
+            } catch (err) {
+                console.warn(`Country lookup failed via ${provider.url}:`, err);
+            }
+        }
+        return null;
+    }
+
+    function readCachedCountry() {
+        const raw = getCookie(COUNTRY_COOKIE);
+        if (!raw) return null;
+        let value = raw;
+        try {
+            value = decodeURIComponent(raw);
+        } catch (err) { /* Not encoded, use as-is. */ }
+        if (value.charAt(0) === '{') { // Cookie written by an earlier version.
+            try {
+                value = JSON.parse(value).isoCode || '';
+            } catch (err) {
+                return null;
+            }
+        }
+        value = value.toLowerCase();
+        return isKnownCountry(value) ? value : null;
+    }
+
+    async function setCountryFromIP() {
+        const cached = readCachedCountry();
+        if (cached) {
+            iti.setCountry(cached);
+            return;
+        }
+        const code = await fetchCountryFromIP();
+        if (!code) return; // Keep the initialCountry fallback.
+        // Don't yank the selector away from someone who started typing while the
+        // lookup was still in flight.
+        if (input.value.trim() === '') iti.setCountry(code);
+        document.cookie = `${COUNTRY_COOKIE}=${encodeURIComponent(code)}; max-age=86400; path=/; SameSite=Lax`;
+    }
+
+    await setCountryFromIP();
+
 	function cleanNumber(number) {
 		return number.trim().replace(/[^+\d]+/g, '').replace(/(^\+)|\D+/g, '$1').replace(/^00/, '+');
 	}
